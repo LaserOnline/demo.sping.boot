@@ -31,6 +31,14 @@ public class Config {
         }
     }
 
+    public String getKeyPassword() {
+        return dotenv.get("KEY_PASSWORD");
+    }
+
+    public String getAlgorithmHashPassword() {
+        return dotenv.get("ALGORITHM_HASH_PASSWORD");
+    }
+    
     public String getBaseUrl() {
         String protocol = dotenv.get(envProfile + "_SPRING_BOOT_PROTOCOL");
         String host = dotenv.get(envProfile + "_SPRING_BOOT_HOST");

@@ -8,6 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import com.example.demo.sping.boot.util.response.Message;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -29,5 +32,12 @@ public class GlobalExceptionHandler {
                                                      errors.put("field", cv.getMessage())
         );
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Message> handleMaxSizeException(MaxUploadSizeExceededException exc) {
+        return ResponseEntity
+                .badRequest()
+                .body(new Message("File too large!"));
     }
 }

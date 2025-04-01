@@ -38,3 +38,6 @@ out/
 
 # Databases
 /mongodb_data
+
+# Nginx
+/nginx_data

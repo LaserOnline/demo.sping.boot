@@ -20,6 +20,7 @@ import com.example.demo.sping.boot.util.entity.UsersEntity;
 import com.example.demo.sping.boot.util.response.JwtResponse;
 import com.example.demo.sping.boot.util.response.Message;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -80,17 +81,17 @@ public class UsersController {
                                  .body(new Message("Invalid password"));
         }
         
-        String accessToken = jwtService.generateAccessToken(user.getUsername());
-        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
+        String accessToken = jwtService.generateAccessToken(user.getUsersUuid());
+        String refreshToken = jwtService.generateRefreshToken(user.getUsersUuid());
 
         return ResponseEntity.ok().body(new JwtResponse(accessToken, refreshToken));
     }
     
 
     @GetMapping("/jwt/message")
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Message> authMessage() {
         return ResponseEntity.ok().body(new Message("HelloWorld"));
     }
-    
     
 }
