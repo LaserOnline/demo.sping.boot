@@ -7,11 +7,11 @@ import lombok.Data;
 @Schema(description = "login")
 @Data
 public class LoginDTO {
-    @Schema(description = "username", example = "username")
+    @Schema(description = "username", example = "LaserOnline")
     @NotEmpty(message = "username is empty")
     private String username;
 
-    @Schema(description = "password", example = "password")
+    @Schema(description = "password", example = "!@LaserOnline1988")
     @NotEmpty(message = "password is empty")
     private String password;
 }

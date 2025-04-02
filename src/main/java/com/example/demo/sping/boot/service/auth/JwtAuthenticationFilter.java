@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,13 +25,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
-    @Override
-    protected void doFilterInternal(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        FilterChain filterChain
-    ) throws ServletException, IOException {
-
+        @Override
+        protected void doFilterInternal(@SuppressWarnings("null") HttpServletRequest request, @SuppressWarnings("null") HttpServletResponse response, @SuppressWarnings("null") FilterChain filterChain)
+            throws ServletException, IOException {
+        
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -40,37 +36,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
+        String usersUuid;
 
-        // ลองดึง Username จาก token ก่อน
-        String username;
         try {
-            username = jwtService.getUsernameFromToken(jwt);
+            // ดึง usersUuid จากโทเค็น
+            usersUuid = jwtService.getUsernameFromToken(jwt);
         } catch (Exception e) {
-            // Token ผิดรูป หรือถอดแล้วพัง
             filterChain.doFilter(request, response);
             return;
         }
 
-        // สร้าง principal เพื่อใช้เช็คกับ isTokenValid(...)
-        User principal = new User(
-            username,
-            "", 
-            new ArrayList<>() // ไม่มี authorities ก็ได้
+        // สร้าง JwtAuthenticatedUser พร้อมข้อมูล usersUuid
+        JwtAuthenticatedUser principal = new JwtAuthenticatedUser(
+            usersUuid, usersUuid, "", new ArrayList<>()
         );
 
-        // **เพิ่มขั้นตอนนี้**: เช็คว่าเป็น Access Token จริง ๆ หรือไม่
-        // (token_type=access, ไม่ expired, username ตรง)
-        if (!jwtService.isTokenValid(jwt, principal)) {
-            // ถ้าไม่ valid -> ไม่ set Authen ให้ -> สุดท้าย Security จะให้ 401
-            filterChain.doFilter(request, response);
-            return;
+        // ตรวจสอบความถูกต้องของโทเค็น
+        if (jwtService.isTokenValid(jwt, principal)) {
+            UsernamePasswordAuthenticationToken authToken =
+                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
-
-        // ถ้า valid -> สร้าง Auth แล้วใส่ใน SecurityContextHolder
-        UsernamePasswordAuthenticationToken authToken =
-            new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        SecurityContextHolder.getContext().setAuthentication(authToken);
 
         filterChain.doFilter(request, response);
     }

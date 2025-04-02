@@ -1,5 +1,7 @@
 package com.example.demo.sping.boot.config;
 
+import java.nio.file.Paths;
+
 import org.springframework.stereotype.Component;
 
 import io.github.cdimascio.dotenv.Dotenv;
@@ -37,6 +39,12 @@ public class Config {
 
     public String getAlgorithmHashPassword() {
         return dotenv.get("ALGORITHM_HASH_PASSWORD");
+    }
+
+    public String getNginxUploadPath() {
+        String volumes = dotenv.get("NGINX_VOLUMES", "./nginx_data");
+        String upload = dotenv.get("NGINX_VOLUMES_UPLOAD", "/upload");
+        return Paths.get(volumes, upload).toString();
     }
     
     public String getBaseUrl() {

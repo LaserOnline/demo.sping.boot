@@ -1,16 +1,25 @@
 package com.example.demo.sping.boot.controller;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.sping.boot.service.app.AppService;
+import com.example.demo.sping.boot.util.dto.Base64DTO;
 import com.example.demo.sping.boot.util.response.Message;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,13 +29,13 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
+import jakarta.validation.Valid;
 
 
 
 @RestController
 @Tag(name = "App Controller", description = "test api")
-@RequestMapping("/")
+@RequestMapping("/app")
 public class AppController {
     private final AppService appService;
 
@@ -98,6 +107,39 @@ public class AppController {
             return ResponseEntity.ok().body(new Message("File uploaded successfully"));
         } catch (IOException e) {
             return ResponseEntity.badRequest().body(new Message("Failed to upload file: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/base64")
+    public ResponseEntity<Object> postMethodName(@RequestBody @Valid Base64DTO base64) {
+        
+        return ResponseEntity.ok().body(new Message(base64.getBase64()));
+    }
+    
+    
+    @SuppressWarnings({"deprecation", "UseSpecificCatch"})
+    @GetMapping(value = "/image", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<InputStreamResource> getImage(@RequestParam("url") String imageUrl) {
+        try {
+            URL url = new URL(imageUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            if (connection.getResponseCode() != HttpStatus.OK.value()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+
+            InputStream inputStream = connection.getInputStream();
+
+            String contentType = connection.getContentType();
+            MediaType mediaType = MediaType.parseMediaType(contentType);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(mediaType);
+
+            return new ResponseEntity<>(new InputStreamResource(inputStream), headers, HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     

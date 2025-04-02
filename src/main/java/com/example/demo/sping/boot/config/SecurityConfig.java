@@ -53,11 +53,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/users/register", "/users/login", 
-                                "/hello","/upload","/upload/**",
+                                "/app/**",
                                 "/swagger/**", "/api-docs/**", "/v3/api-docs/**",
                                 "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
-                .requestMatchers("/users/jwt/**").authenticated()
+                .requestMatchers("/users/auth/**").authenticated()
                 .anyRequest().denyAll()
             )
 
@@ -96,4 +96,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    
+    
 }

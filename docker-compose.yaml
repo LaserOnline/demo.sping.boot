@@ -15,9 +15,10 @@ services:
     build:
       context: .
       dockerfile: dockerfile.nginx
-    container_name: "${NGINX_CONTAINER_NAME}"
+    container_name: "nginx"
     ports:
       - "${NGINX_PORT}:80"
     volumes:
       - "${NGINX_VOLUMES}:/var/www/data"
       - "${NGINX_VOLUMES}${NGINX_VOLUMES_LOG}:/var/log/nginx"
+      - "${NGINX_VOLUMES}${NGINX_VOLUMES_UPLOAD}:/var/www/data/upload"

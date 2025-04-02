@@ -4,12 +4,14 @@ import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.sping.boot.service.auth.JwtAuthenticatedUser;
 import com.example.demo.sping.boot.service.auth.JwtService;
 import com.example.demo.sping.boot.service.users.PasswordService;
 import com.example.demo.sping.boot.service.users.UserValidationService;
@@ -23,6 +25,7 @@ import com.example.demo.sping.boot.util.response.Message;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+
 
 
 
@@ -88,10 +91,18 @@ public class UsersController {
     }
     
 
-    @GetMapping("/jwt/message")
+    @GetMapping("/auth/message")
     @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Message> authMessage() {
-        return ResponseEntity.ok().body(new Message("HelloWorld"));
+        return ResponseEntity.ok().body(new Message("Hello"));
     }
+
+    @GetMapping("/auth/users/info")
+    @SecurityRequirement(name = "Bearer Authentication")
+    public ResponseEntity<Message> usersInfo(@AuthenticationPrincipal JwtAuthenticatedUser principal) {
+        String usersUuid = principal.getUsersUuid();
+        return ResponseEntity.ok(new Message(usersUuid));
+    }
+    
     
 }

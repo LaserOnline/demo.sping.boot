@@ -33,5 +33,4 @@ public class RegisterDTO {
     @NotEmpty(message = "password is empty")
     private String password;
 
-    private String users_uuid;
 }
