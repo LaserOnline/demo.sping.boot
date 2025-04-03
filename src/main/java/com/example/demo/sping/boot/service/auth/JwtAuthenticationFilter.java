@@ -10,6 +10,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,40 +26,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
-        @Override
-        protected void doFilterInternal(@SuppressWarnings("null") HttpServletRequest request, @SuppressWarnings("null") HttpServletResponse response, @SuppressWarnings("null") FilterChain filterChain)
-            throws ServletException, IOException {
-        
+    @Override
+    protected void doFilterInternal(
+        HttpServletRequest request,
+        HttpServletResponse response,
+        FilterChain filterChain
+    ) throws ServletException, IOException {
+    
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
-
+    
         final String jwt = authHeader.substring(7);
         String usersUuid;
-
+    
         try {
-            // ดึง usersUuid จากโทเค็น
             usersUuid = jwtService.getUsernameFromToken(jwt);
+        } catch (ExpiredJwtException expiredEx) {
+            // ✅ แก้ตรงนี้เลย
+            handleExpiredToken(response);
+            return;  // สำคัญมาก ต้องหยุดการทำงานที่ตรงนี้
         } catch (Exception e) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        // สร้าง JwtAuthenticatedUser พร้อมข้อมูล usersUuid
+    
         JwtAuthenticatedUser principal = new JwtAuthenticatedUser(
             usersUuid, usersUuid, "", new ArrayList<>()
         );
-
-        // ตรวจสอบความถูกต้องของโทเค็น
+    
         if (jwtService.isTokenValid(jwt, principal)) {
             UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);
+        } else {
+            handleExpiredToken(response);
+            return;  // สำคัญมาก ต้องหยุดการทำงานที่ตรงนี้เช่นกัน
         }
-
+    
         filterChain.doFilter(request, response);
+    }
+    
+    // ✅ ฟังก์ชั่นช่วยเซ็ต response ให้ง่ายขึ้น
+    private void handleExpiredToken(HttpServletResponse response) throws IOException {
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);  // 403 ตามที่ต้องการ
+        response.getWriter().write("""
+            {"message": "Access token expired"}
+        """);
     }
 }

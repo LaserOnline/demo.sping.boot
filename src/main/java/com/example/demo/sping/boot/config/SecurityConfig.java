@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import com.example.demo.sping.boot.service.auth.JwtAuthenticationFilter;
+import com.example.demo.sping.boot.util.dto.validated.InvalidTokenTypeException;
+import com.example.demo.sping.boot.util.dto.validated.TokenExpiredAuthenticationException;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -61,26 +63,25 @@ public class SecurityConfig {
                 .anyRequest().denyAll()
             )
 
-            // สำคัญ: เพิ่ม Exception Handling แบบ Custom
             .exceptionHandling(exception -> exception
-                // กรณี Unauthenticated (ไม่มี token / token ไม่ถูกต้อง)
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setContentType("application/json;charset=UTF-8");
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    // จะเขียนเองแบบง่าย ๆ ก็ได้
-                    response.getWriter().write("""
-                        {"message":"Token missing or invalid"}
+            .authenticationEntryPoint((request, response, authException) -> {
+                response.setContentType("application/json;charset=UTF-8");
+                    if (authException instanceof TokenExpiredAuthenticationException) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403
+                        response.getWriter().write("""
+                            {"message": "Access token expired"}
                         """);
-                    // หรือถ้าต้องการใช้ ObjectMapper ก็สามารถทำได้
-                })
-
-                // กรณี Forbidden (Token ถูกต้อง แต่ไม่มีสิทธิ์เพียงพอ)
-                .accessDeniedHandler((request, response, accessDeniedException) -> {
-                    response.setContentType("application/json;charset=UTF-8");
-                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.getWriter().write("""
-                        {"message":"Forbidden - you do not have permission"}
+                    } else if (authException.getCause() instanceof InvalidTokenTypeException) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("""
+                            {"message": "Invalid refresh token"}
                         """);
+                    } else {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("""
+                            {"message": "Token missing or invalid"}
+                        """);
+                    }
                 })
             )
 

@@ -7,6 +7,9 @@ import java.util.Map;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.sping.boot.config.Config;
+import com.example.demo.sping.boot.util.dto.validated.InvalidTokenTypeException;
+import com.example.demo.sping.boot.util.dto.validated.TokenExpiredException;
 import com.example.demo.sping.boot.util.encrypt.EncryptionUtil;
 
 import io.jsonwebtoken.Claims;
@@ -16,12 +19,15 @@ public class JwtService {
     private final JwtTokenBuilder tokenBuilder;
     private final JwtTokenParser tokenParser;
 
-    private final long accessTokenExpirationMs = 1000 * 60 * 15;
-    private final long refreshTokenExpirationMs = 1000 * 60 * 60 * 24 * 7;
+    private final long accessTokenExpirationMs;
+    private final long refreshTokenExpirationMs;
 
-    public JwtService(JwtUtil jwtUtil) {
+    public JwtService(JwtUtil jwtUtil,Config config) {
         this.tokenBuilder = new JwtTokenBuilder(jwtUtil.getJwtSecret());
         this.tokenParser = new JwtTokenParser(jwtUtil.getJwtSecret());
+
+        this.accessTokenExpirationMs = config.getAccessTokenExpireMs();
+        this.refreshTokenExpirationMs = config.getRefreshTokenExpireMs();
     }
 
     public String generateAccessToken(String input) {
@@ -48,10 +54,21 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         Claims claims = tokenParser.getClaims(token);
 
-        if (!"access".equals(claims.get("token_type", String.class))) return false;
+        String tokenType = claims.get("token_type", String.class);
+        if (!"access".equals(tokenType)) {
+            throw new InvalidTokenTypeException("Not an access token");
+        }
 
         String username = EncryptionUtil.decrypt(claims.getSubject());
-        return username.equals(userDetails.getUsername()) &&
-               !claims.getExpiration().before(new Date());
+
+        if (!username.equals(userDetails.getUsername())) {
+            return false;
+        }
+
+        if (claims.getExpiration().before(new Date())) {
+            throw new TokenExpiredException("Access token expired");
+        }
+
+        return true;
     }
 }

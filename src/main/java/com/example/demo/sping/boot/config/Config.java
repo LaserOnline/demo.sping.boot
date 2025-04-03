@@ -58,4 +58,12 @@ public class Config {
     public String getEnvProfile() {
         return envProfile;
     }
+
+    public long getAccessTokenExpireMs() {
+        return Long.parseLong(dotenv.get("ACCESS_TOKEN_EXPIRE_MS", "60000"));
+    }
+    
+    public long getRefreshTokenExpireMs() {
+        return Long.parseLong(dotenv.get("REFRESH_TOKEN_EXPIRE_MS", "86400000"));
+    }
 }

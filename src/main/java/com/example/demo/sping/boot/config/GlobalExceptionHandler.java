@@ -40,4 +40,11 @@ public class GlobalExceptionHandler {
                 .badRequest()
                 .body(new Message("File too large!"));
     }
+
+    // Handle Invalid Image Exception
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Message> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new Message(ex.getMessage()));
+    }
 }
