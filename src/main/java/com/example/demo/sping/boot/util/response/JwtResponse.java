@@ -10,9 +10,9 @@ public class JwtResponse {
         this.refreshToken = refreshToken;
     }
 
-    @Schema(description = "accessToken", example = "AccessToken")
+    @Schema(description = "accessToken", example = "accessToken")
     private String accessToken;
 
-    @Schema(description = "refreshToken", example = "RefreshToken")
+    @Schema(description = "refreshToken", example = "refreshToken")
     private String refreshToken;
 }

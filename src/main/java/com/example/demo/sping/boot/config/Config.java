@@ -20,7 +20,7 @@ public class Config {
                 .load();
 
         String profile = dotenv.get("ENV_PROFILE", "UAT").toUpperCase();
-
+   
         switch (profile) {
             case "PRO":
             case "PRODUCTION":
@@ -31,14 +31,6 @@ public class Config {
                 this.envProfile = "UAT";
                 break;
         }
-    }
-
-    public String getKeyPassword() {
-        return dotenv.get("KEY_PASSWORD");
-    }
-
-    public String getAlgorithmHashPassword() {
-        return dotenv.get("ALGORITHM_HASH_PASSWORD");
     }
 
     public String getNginxUploadPath() {
@@ -58,12 +50,16 @@ public class Config {
     public String getEnvProfile() {
         return envProfile;
     }
+    
+    public String getJwtSecret() {
+        return dotenv.get("JWT_SECRET");
+    }
 
     public long getAccessTokenExpireMs() {
-        return Long.parseLong(dotenv.get("ACCESS_TOKEN_EXPIRE_MS", "60000"));
+        return Long.parseLong(dotenv.get("ACCESS_TOKEN_EXPIRE_MS", "60000").trim());
     }
-    
+
     public long getRefreshTokenExpireMs() {
-        return Long.parseLong(dotenv.get("REFRESH_TOKEN_EXPIRE_MS", "86400000"));
+        return Long.parseLong(dotenv.get("REFRESH_TOKEN_EXPIRE_MS", "60000").trim());
     }
 }

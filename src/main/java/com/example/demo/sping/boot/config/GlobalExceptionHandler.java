@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import com.example.demo.sping.boot.util.dto.validated.InvalidTokenException;
+import com.example.demo.sping.boot.util.dto.validated.TokenExpiredException;
 import com.example.demo.sping.boot.util.response.Message;
 
 import jakarta.validation.ConstraintViolationException;
@@ -41,10 +43,20 @@ public class GlobalExceptionHandler {
                 .body(new Message("File too large!"));
     }
 
-    // Handle Invalid Image Exception
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Message> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new Message(ex.getMessage()));
     }
-}
+
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<Message> handleTokenExpired(TokenExpiredException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Message(ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<Message> handleInvalidToken(InvalidTokenException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new Message(ex.getMessage()));
+    }
+   
+}   

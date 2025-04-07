@@ -1,19 +1,22 @@
 package com.example.demo.sping.boot.config;
 
+import javax.crypto.SecretKey;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.example.demo.sping.boot.service.auth.JwtAuthenticationFilter;
-import com.example.demo.sping.boot.util.dto.validated.InvalidTokenTypeException;
-import com.example.demo.sping.boot.util.dto.validated.TokenExpiredAuthenticationException;
 
+import io.jsonwebtoken.security.Keys;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
@@ -24,12 +27,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
-    private final JwtAuthenticationFilter jwtAuthFilter;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
-        this.jwtAuthFilter = jwtAuthFilter;
-    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -49,44 +48,40 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/users/register", "/users/login", 
-                                "/app/**",
-                                "/swagger/**", "/api-docs/**", "/v3/api-docs/**",
-                                "/swagger-ui/**", "/swagger-ui.html")
-                    .permitAll()
+                // 1) Whitelist เฉพาะ path ที่ไม่ต้องใช้ Token
+                .requestMatchers(
+                    "/users/register", // สมัครสมาชิก
+                    "/users/login",    // ล็อกอิน
+                    "/app/**",
+                    "/swagger/**",
+                    "/api-docs/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html"
+                ).permitAll()
+
+                .requestMatchers("/users/generate/**").authenticated()
                 .requestMatchers("/users/auth/**").authenticated()
-                .anyRequest().denyAll()
+                .anyRequest().authenticated()
             )
 
-            .exceptionHandling(exception -> exception
-            .authenticationEntryPoint((request, response, authException) -> {
-                response.setContentType("application/json;charset=UTF-8");
-                    if (authException instanceof TokenExpiredAuthenticationException) {
-                        response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403
-                        response.getWriter().write("""
-                            {"message": "Access token expired"}
-                        """);
-                    } else if (authException.getCause() instanceof InvalidTokenTypeException) {
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                        response.getWriter().write("""
-                            {"message": "Invalid refresh token"}
-                        """);
-                    } else {
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                        response.getWriter().write("""
-                            {"message": "Token missing or invalid"}
-                        """);
-                    }
+            // กำหนด exception handling ให้ส่ง 401 เมื่อไม่มี/ไม่ผ่าน Auth
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
                 })
             )
 
-            .addFilterBefore(jwtAuthFilter, 
-                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+            // สั่งสร้าง session แบบ stateless
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        // ใส่ Filter ของเรา (JWT) ก่อน UsernamePasswordAuthenticationFilter
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -97,6 +92,9 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    
+    @Bean
+    public SecretKey jwtSecretKey(Config config) {
+        return Keys.hmacShaKeyFor(config.getJwtSecret().getBytes());
+    }
     
 }
