@@ -1,5 +1,9 @@
 package com.example.demo.sping.boot.config;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
+
 import javax.crypto.SecretKey;
 
 import org.springframework.context.annotation.Bean;
@@ -25,11 +29,23 @@ import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import jakarta.servlet.http.HttpServletResponse;
 
-
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    @Bean
+    public KeyPair rsaKeyPair() throws Exception {
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        // ✅ java.security.KeyPair
+        return keyGen.generateKeyPair();
+    }
+
+    @Bean
+    public RSAPrivateKey rsaPrivateKey(KeyPair keyPair) {
+        return (RSAPrivateKey) keyPair.getPrivate();
+    }
+    
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
@@ -85,7 +101,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {

@@ -1,6 +1,7 @@
 package com.example.demo.sping.boot.service.auth;
 
 import java.io.IOException;
+import java.security.interfaces.RSAPrivateKey;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import com.example.demo.sping.boot.util.dto.validated.InvalidTokenException;
 import com.example.demo.sping.boot.util.dto.validated.TokenExpiredException;
+import com.nimbusds.jwt.JWTClaimsSet;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -31,11 +33,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenValidator tokenValidator;
     private final HandlerExceptionResolver exceptionResolver;
+    private final RSAPrivateKey rsaPrivateKey;
 
     public JwtAuthenticationFilter(JwtTokenValidator tokenValidator,
-                               @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
+        @Qualifier("handlerExceptionResolver") 
+        HandlerExceptionResolver exceptionResolver,
+        RSAPrivateKey rsaPrivateKey) {
     this.tokenValidator = tokenValidator;
     this.exceptionResolver = exceptionResolver;
+    this.rsaPrivateKey = rsaPrivateKey;
 }
 
     @Override
@@ -56,7 +62,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            Claims claims = tokenValidator.parseToken(token);
+            Claims claims;
+
+            if (EncodeJwt.isEncryptedToken(token)) {
+                // เป็น refresh
+                JWTClaimsSet joseClaims = EncodeJwt.decryptEncryptedToken(token, rsaPrivateKey);
+                // helper ที่จะแปลง JWTClaimsSet → Claims
+                claims = JwtTokenValidator.convertToClaims(joseClaims);
+            } else {
+                // ✅ เป็น access token แบบธรรมดา
+                claims = tokenValidator.parseToken(token);
+            }
 
             if (JwtTokenValidator.isTokenExpired(claims)) {
                 throw new TokenExpiredException("JWT token is expired");

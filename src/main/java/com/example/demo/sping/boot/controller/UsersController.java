@@ -25,6 +25,7 @@ import com.example.demo.sping.boot.util.dto.RegisterDTO;
 import com.example.demo.sping.boot.util.entity.UsersEntity;
 import com.example.demo.sping.boot.util.response.JwtResponse;
 import com.example.demo.sping.boot.util.response.Message;
+import com.example.demo.sping.boot.util.response.TokenResult;
 import com.example.demo.sping.boot.util.response.UsersInfo;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -234,10 +235,15 @@ public class UsersController {
                                 .body(new Message(e.getMessage()));
         }
         // ส่ง token
-        String accessToken = authService.generateAccessToken(encodeUuid,encryptedRoles);
-        String refreshToken = authService.generateRefreshToken(encodeUuid,"true");
+        TokenResult accessToken = authService.generateAccessToken(encodeUuid, encryptedRoles);
+        TokenResult refreshToken = authService.generateRefreshToken(encodeUuid, "true");
 
-        return ResponseEntity.ok().body(new JwtResponse(accessToken, refreshToken));
+        return ResponseEntity.ok().body(new JwtResponse(
+            accessToken.getToken(),
+            refreshToken.getToken(),
+            refreshToken.getIat(),
+            refreshToken.getExp()
+        ));
     }
 
     // create access token
@@ -307,8 +313,8 @@ public class UsersController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                 .body(new Message(e.getMessage()));
         }
-        String accessToken = authService.generateAccessToken(encodeUuid,encryptedRoles);
-        return ResponseEntity.ok().body(new Message(accessToken));
+        TokenResult token = authService.generateAccessToken(encodeUuid,encryptedRoles);
+        return ResponseEntity.ok().body(new Message(token.getToken()));
     }
 
     // create new refresh token

@@ -3,6 +3,7 @@ package com.example.demo.sping.boot.service.auth;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 import javax.crypto.SecretKey;
@@ -10,6 +11,7 @@ import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.JWTClaimsSet;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -69,5 +71,25 @@ public class JwtTokenValidator {
         } catch (IOException e) {
             throw new IllegalArgumentException("Unable to parse JWT payload", e);
         }
+    }
+
+    public static Claims convertToClaims(JWTClaimsSet jwtClaimsSet) {
+        Map<String, Object> map = new java.util.LinkedHashMap<>();
+        
+        map.put("sub", jwtClaimsSet.getSubject());
+        map.put("iss", jwtClaimsSet.getIssuer());
+        map.put("iat", jwtClaimsSet.getIssueTime());
+        map.put("exp", jwtClaimsSet.getExpirationTime());
+        map.put("nbf", jwtClaimsSet.getNotBeforeTime());
+        map.put("jti", jwtClaimsSet.getJWTID());
+
+        jwtClaimsSet.getClaims().forEach((k, v) -> {
+            if (!List.of("sub", "iss", "iat", "exp", "nbf", "jti").contains(k)) {
+                map.put(k, v);
+            }
+        });
+
+        // ใช้ claims จาก Jwts เพื่อ wrap
+        return Jwts.claims().add(map).build();
     }
 }

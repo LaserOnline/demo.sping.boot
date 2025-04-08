@@ -15,7 +15,7 @@ public class Config {
 
     public Config() {
         this.dotenv = Dotenv.configure()
-                .directory("/app")
+                .directory("./")
                 .ignoreIfMissing()
                 .load();
 
@@ -56,10 +56,10 @@ public class Config {
     }
 
     public long getAccessTokenExpireMs() {
-        return Long.parseLong(dotenv.get("ACCESS_TOKEN_EXPIRE_MS", "60000").trim());
+        return Long.parseLong(dotenv.get("ACCESS_TOKEN_EXPIRE_MS", "0").trim());
     }
 
     public long getRefreshTokenExpireMs() {
-        return Long.parseLong(dotenv.get("REFRESH_TOKEN_EXPIRE_MS", "60000").trim());
+        return Long.parseLong(dotenv.get("REFRESH_TOKEN_EXPIRE_MS", "0").trim());
     }
 }

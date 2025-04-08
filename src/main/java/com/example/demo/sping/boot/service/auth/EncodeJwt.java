@@ -1,6 +1,9 @@
 package com.example.demo.sping.boot.service.auth;
 
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Base64;
+import java.util.Date;
 import java.util.Random;
 
 import javax.crypto.Cipher;
@@ -9,8 +12,18 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.example.demo.sping.boot.util.encrypt.AesUtils;
+import org.springframework.stereotype.Component;
 
+import com.example.demo.sping.boot.util.encrypt.AesUtils;
+import com.nimbusds.jose.EncryptionMethod;
+import com.nimbusds.jose.JWEAlgorithm;
+import com.nimbusds.jose.JWEHeader;
+import com.nimbusds.jose.crypto.RSADecrypter;
+import com.nimbusds.jose.crypto.RSAEncrypter;
+import com.nimbusds.jwt.EncryptedJWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+
+@Component
 public class EncodeJwt {
     private static final String keyAES = "iGH5iClX3hhMvkyexZHKXw==";
 
@@ -109,4 +122,58 @@ public class EncodeJwt {
         byte[] originalBytes = cipher.doFinal(encryptedBytes);
         return new String(originalBytes);
     }
-}
+
+    @SuppressWarnings("UseSpecificCatch")
+    public static String createEncryptedToken(String userUuid, String jti, long expirationMillis, RSAPublicKey publicKey) {
+        try {
+            long now = System.currentTimeMillis();
+            
+            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                    .subject(userUuid)
+                    .issuer("auth-service")
+                    .claim("type", "refresh")
+                    .claim("jti", jti)
+                    .issueTime(new Date(now))
+                    .expirationTime(new Date(now + expirationMillis))
+                    .build();
+
+            // สร้าง Header สำหรับ JWE
+            JWEHeader header = new JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM)
+                    .contentType("JWT") // indicate nested JWT
+                    .build();
+
+            EncryptedJWT encryptedJWT = new EncryptedJWT(header, claimsSet);
+
+            // เข้ารหัส
+            RSAEncrypter encrypter = new RSAEncrypter(publicKey);
+            encryptedJWT.encrypt(encrypter);
+
+            return encryptedJWT.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating encrypted refresh token", e);
+        }
+    }
+
+    // ตรวจสอบ token ว่าเป็น jwe หรือไม
+    @SuppressWarnings("UseSpecificCatch")
+        public static boolean isEncryptedToken(String token) {
+            try {
+                EncryptedJWT.parse(token);
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+    }
+
+    @SuppressWarnings("UseSpecificCatch")
+    public static JWTClaimsSet decryptEncryptedToken(String token, RSAPrivateKey privateKey) {
+        try {
+            EncryptedJWT encryptedJWT = EncryptedJWT.parse(token);
+            RSADecrypter decrypter = new RSADecrypter(privateKey);
+            encryptedJWT.decrypt(decrypter);
+            return encryptedJWT.getJWTClaimsSet();
+        } catch (Exception e) {
+            throw new RuntimeException("Error decrypting encrypted refresh token", e);
+        }
+    }
+} 

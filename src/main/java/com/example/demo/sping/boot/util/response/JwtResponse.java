@@ -5,9 +5,11 @@ import lombok.Data;
 
 @Data
 public class JwtResponse {
-    public JwtResponse(String accessToken,String refreshToken ) {
+    public JwtResponse(String accessToken,String refreshToken,long iat,long exp ) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
+        this.iat = iat;
+        this.exp = exp;
     }
 
     @Schema(description = "accessToken", example = "accessToken")
@@ -15,4 +17,8 @@ public class JwtResponse {
 
     @Schema(description = "refreshToken", example = "refreshToken")
     private String refreshToken;
+
+    private long iat;
+
+    private long exp;
 }

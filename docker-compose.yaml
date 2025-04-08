@@ -22,15 +22,15 @@ services:
       - "${NGINX_VOLUMES}:/var/www/data"
       - "${NGINX_VOLUMES}${NGINX_VOLUMES_LOG}:/var/log/nginx"
       - "${NGINX_VOLUMES}${NGINX_VOLUMES_UPLOAD}:/var/www/data/upload"
-  spring-boot:
-    build:
-      context: .
-      dockerfile: dockerfile.spring.boot
-    container_name: spring-boot
-    depends_on:
-      - mongodb
-      - nginx
-    ports:
-      - "${UAT_SPRING_BOOT_PORT}:${UAT_SPRING_BOOT_PORT}"
-    env_file:
-      - .env
+  # spring-boot:
+  #   build:
+  #     context: .
+  #     dockerfile: dockerfile.spring.boot
+  #   container_name: spring-boot
+  #   depends_on:
+  #     - mongodb
+  #     - nginx
+  #   ports:
+  #     - "${UAT_SPRING_BOOT_PORT}:${UAT_SPRING_BOOT_PORT}"
+  #   env_file:
+  #     - .env
