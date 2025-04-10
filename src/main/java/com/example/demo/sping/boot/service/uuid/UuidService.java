@@ -13,7 +13,7 @@ public class UuidService {
         return UUID.randomUUID().toString().replace("-", "");
     }
 
-    public String generateUuidWithTimestamp() {
+    public static  String generateUuidWithTimestamp() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
                                                        .withZone(ZoneId.systemDefault());
         String timestamp = formatter.format(Instant.now());

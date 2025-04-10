@@ -1,6 +1,7 @@
 package com.example.demo.sping.boot.service.auth;
 
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -91,5 +92,31 @@ public class JwtTokenValidator {
 
         // ใช้ claims จาก Jwts เพื่อ wrap
         return Jwts.claims().add(map).build();
+    }
+
+    public static boolean isWithinAllowedWindow() {
+        LocalTime now = LocalTime.now();
+
+        List<TimeWindow> allowedWindows = List.of(
+            new TimeWindow(LocalTime.of(9, 0), LocalTime.of(12, 0)),
+            new TimeWindow(LocalTime.of(15, 0), LocalTime.of(16, 0)),
+            new TimeWindow(LocalTime.of(20, 0), LocalTime.of(22, 0))
+        );
+
+        return allowedWindows.stream().anyMatch(window -> window.isWithin(now));
+    }
+
+    private static class TimeWindow {
+        private final LocalTime start;
+        private final LocalTime end;
+
+        public TimeWindow(LocalTime start, LocalTime end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public boolean isWithin(LocalTime time) {
+            return !time.isBefore(start) && !time.isAfter(end);
+        }
     }
 }

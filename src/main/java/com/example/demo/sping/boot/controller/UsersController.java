@@ -5,24 +5,32 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.sping.boot.service.auth.AuthService;
 import com.example.demo.sping.boot.service.auth.EncodeJwt;
+import com.example.demo.sping.boot.service.auth.JwtTokenValidator;
 import com.example.demo.sping.boot.service.auth.PayloadData;
 import com.example.demo.sping.boot.service.upload.UploadImagesService;
 import com.example.demo.sping.boot.service.users.PasswordService;
 import com.example.demo.sping.boot.service.users.UserValidationService;
 import com.example.demo.sping.boot.service.users.UsersService;
+import com.example.demo.sping.boot.service.uuid.UuidService;
 import com.example.demo.sping.boot.util.dto.LoginDTO;
+import com.example.demo.sping.boot.util.dto.PasswordDTO;
 import com.example.demo.sping.boot.util.dto.RegisterDTO;
 import com.example.demo.sping.boot.util.entity.UsersEntity;
+import com.example.demo.sping.boot.util.repository.UserRepository;
 import com.example.demo.sping.boot.util.response.JwtResponse;
 import com.example.demo.sping.boot.util.response.Message;
 import com.example.demo.sping.boot.util.response.TokenResult;
@@ -39,15 +47,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 
-
-
-
-
-
 @RestController
 @Tag(name = "Users Controller", description = "method users all")
 @RequestMapping("/users")
 public class UsersController {
+
+    private final UserRepository userRepository;
     private  final UsersService usersService;
     private final UserValidationService userValidationService;
     private final PasswordService passwordService;
@@ -60,12 +65,13 @@ public class UsersController {
         PasswordService passwordService,
         UploadImagesService uploadImagesService,
         AuthService authService
-    ) {
+    , UserRepository userRepository) {
         this.usersService = usersService;
         this.userValidationService = userValidationService;
         this.passwordService = passwordService;
         this.uploadImagesService = uploadImagesService;
         this.authService = authService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/register")
@@ -236,7 +242,7 @@ public class UsersController {
         }
         // ส่ง token
         TokenResult accessToken = authService.generateAccessToken(encodeUuid, encryptedRoles);
-        TokenResult refreshToken = authService.generateRefreshToken(encodeUuid, "true");
+        TokenResult refreshToken = authService.generateRefreshToken(encodeUuid, UuidService.generateUuidWithTimestamp());
 
         return ResponseEntity.ok().body(new JwtResponse(
             accessToken.getToken(),
@@ -335,10 +341,12 @@ public class UsersController {
         )),
     })
     @SecurityRequirement(name = "Bearer Authentication")
-    public ResponseEntity<Message> generateRefreshToken(@AuthenticationPrincipal PayloadData payloadData) {
-        long remainingTime = payloadData.getRemainingTime();
-        System.err.println(remainingTime);
-        return ResponseEntity.ok().body(new Message("hello"));
+    public ResponseEntity<Object> generateRefreshToken(@AuthenticationPrincipal PayloadData payloadData) {
+        if (!JwtTokenValidator.isWithinAllowedWindow()) {
+            return  ResponseEntity.status(403).body(new Message("JWT token is expired"));
+        }
+        TokenResult token = authService.generateRefreshToken(payloadData.getUsername(), UuidService.generateUuidWithTimestamp());
+        return ResponseEntity.ok().body(new TokenResult(token.getToken(), token.getIat(), token.getIat()));
     }
 
     // ดึงข้อมูลผู้ใช้
@@ -415,96 +423,92 @@ public class UsersController {
         UsersInfo userInfo = usersService.getUserInfoByUuid(usersUuid);
         return ResponseEntity.ok(userInfo);
 }
+
+    @PostMapping(value = "/auth/upload/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @SecurityRequirement(name = "Bearer Authentication")
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Upload Success",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = Message.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "File is not a valid image",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = Message.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Token missing or invalid",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = Message.class)
+            )
+        ),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - you do not have permission",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = Message.class)
+            )
+        ),
+    })
+    public ResponseEntity<Object> uploadProfile(
+    @AuthenticationPrincipal PayloadData principal,
+    @RequestPart("file") MultipartFile file
+    ) {
+        String oldFilename = usersService.getProfileImageByUsersUuid(principal.getUsername())
+        .orElse(""); 
+        boolean remove = uploadImagesService.removeImagesOld(oldFilename);
+
+        if (!remove) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new Message("error update image old")); 
+        }
+
+        String filename = uploadImagesService.processImage(file, principal.getUsername());
+        boolean updated = usersService.updateUserProfileImage(principal.getUsername(), filename);
+        if (!updated) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new Message("User info not found"));
+        }
         
-//     @PostMapping("/auth/edit/info")
-//     @SecurityRequirement(name = "Bearer Authentication")
-//     public ResponseEntity<Object> updateInfo(
-//             @Valid @RequestBody UsersInfoDTO usersInfoDTO,
-//             @AuthenticationPrincipal JwtAuthenticatedUser principal) {
-
-//         return ResponseEntity.ok().body(new Message(principal.getUsersUuid()));
-//     }
-
-//     @PostMapping(value = "/auth/upload/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//     @SecurityRequirement(name = "Bearer Authentication")
-//     @ApiResponses({
-//         @ApiResponse(
-//             responseCode = "200",
-//             description = "Upload Success",
-//             content = @Content(
-//                 mediaType = "application/json",
-//                 schema = @Schema(implementation = Message.class)
-//             )
-//         ),
-//         @ApiResponse(
-//             responseCode = "400",
-//             description = "File is not a valid image",
-//             content = @Content(
-//                 mediaType = "application/json",
-//                 schema = @Schema(implementation = Message.class)
-//             )
-//         ),
-//         @ApiResponse(
-//             responseCode = "401",
-//             description = "Token missing or invalid",
-//             content = @Content(
-//                 mediaType = "application/json",
-//                 schema = @Schema(implementation = Message.class)
-//             )
-//         ),
-//         @ApiResponse(
-//             responseCode = "403",
-//             description = "Forbidden - you do not have permission",
-//             content = @Content(
-//                 mediaType = "application/json",
-//                 schema = @Schema(implementation = Message.class)
-//             )
-//         ),
-//     })
-//     public ResponseEntity<Object> uploadProfile(
-//     @AuthenticationPrincipal JwtAuthenticatedUser principal,
-//     @RequestPart("file") MultipartFile file
-//     ) {
-//         String oldFilename = usersService.getProfileImageByUsersUuid(principal.getUsersUuid())
-//         .orElse(""); 
-//         System.out.println("-> " + oldFilename);
-//         boolean remove = uploadImagesService.removeImagesOld(oldFilename);
-
-//         if (!remove) {
-//             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-//                 .body(new Message("error update image old")); 
-//         }
-
-//         String filename = uploadImagesService.processImage(file, principal.getUsersUuid());
-//         boolean updated = usersService.updateUserProfileImage(principal.getUsersUuid(), filename);
-//         if (!updated) {
-//             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                 .body(new Message("User info not found"));
-//         }
+        return ResponseEntity.ok().body(new Message("Upload Successfully"));
+    }
     
-//         return ResponseEntity.ok().body(new Message("Upload Successfully"));
-//     }
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PutMapping("auth/password")
+    public ResponseEntity<Message> updatePassword
+    (@Valid 
+    @RequestBody PasswordDTO dto
+    ,@AuthenticationPrincipal PayloadData principal) {
+        // 1 ดึง ข้อมูล users
+        Optional<UsersEntity> uuid = usersService.findByUsersUuid(principal.getUsername());
 
-//     @PutMapping("/auth/reset/password")
-//     @SecurityRequirement(name = "Bearer Authentication")
-//     public ResponseEntity<Object> resetPassword(
-//         @Valid @RequestBody PasswordDTO passwordDTO,
-//         @AuthenticationPrincipal JwtAuthenticatedUser principal
-//     ) {
-//         return ResponseEntity.ok().body(new Message(principal.getUsersUuid()));
-//     }
-    
-//     @PostMapping("/auth/access/token")
-//     @SecurityRequirement(name = "Bearer Authentication")
-//     public ResponseEntity<Object> createAccessToken(@RequestBody String entity) {
-//         return ResponseEntity.ok().body(new Message(""));
-//     }
+        // 2 ตรวจสอบ ว่าพบ users หรือไม
+        if(uuid.isEmpty()) {
+            return ResponseEntity.status(404).body(new Message("Users Not Found"));
+        }
 
-//     @PostMapping("/auth/refresh/token")
-//     @SecurityRequirement(name = "Bearer Authentication")
-//     public ResponseEntity<Object> createRefreshToken(@RequestBody String entity) {
-//         return ResponseEntity.ok().body(new Message(""));
-//     }
-    
-    
+        // 3 ตรวจสอบ ห้าม password ซ้ำกัน
+        UsersEntity users = uuid.get();
+
+        if(passwordService.matches(dto.getPassword(), users.getPassword())) {
+            return ResponseEntity.badRequest().body(new Message("Password Aggravate"));
+        }
+
+        // 4 update password
+        String encryptPassword = passwordService.encodePassword(dto.getPassword());
+        users.setPassword(encryptPassword);
+        userRepository.save(users);
+
+        return ResponseEntity.ok().body(new Message("successfully"));
+    }
 }
