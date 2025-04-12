@@ -57,7 +57,7 @@ public class UploadImagesService {
             if (image == null) return null;
     
             // สร้างชื่อไฟล์ (ไม่มี .jpg)
-            String filenameWithoutExtension = uuidService.generateUuidWithTimestamp();
+            String filenameWithoutExtension = UuidService.generateUuidWithTimestamp();
     
             String savePath = config.getNginxUploadPath() + "/" + filenameWithoutExtension + ".jpg";
     

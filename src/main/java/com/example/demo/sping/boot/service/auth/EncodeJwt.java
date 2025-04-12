@@ -1,7 +1,6 @@
 package com.example.demo.sping.boot.service.auth;
 
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.util.Base64;
 import java.util.Date;
 import java.util.Random;
@@ -14,25 +13,32 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.stereotype.Component;
 
+import com.example.demo.sping.boot.config.Config;
 import com.example.demo.sping.boot.util.encrypt.AesUtils;
 import com.nimbusds.jose.EncryptionMethod;
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWEAlgorithm;
 import com.nimbusds.jose.JWEHeader;
-import com.nimbusds.jose.crypto.RSADecrypter;
-import com.nimbusds.jose.crypto.RSAEncrypter;
+import com.nimbusds.jose.crypto.DirectDecrypter;
+import com.nimbusds.jose.crypto.DirectEncrypter;
 import com.nimbusds.jwt.EncryptedJWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 
 @Component
 public class EncodeJwt {
+    
+    private final SecretKey jweSecretKey;
     private static final String keyAES = "iGH5iClX3hhMvkyexZHKXw==";
 
-    // สร้าง SecretKey จาก keyAES ตายตัว
+    public EncodeJwt(Config config) {
+        byte[] decodedKey = Base64.getDecoder().decode(config.getJweSecret());
+        this.jweSecretKey = new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+    }
+
     public static SecretKey getFixedKey() {
         byte[] decodedKey = Base64.getDecoder().decode(keyAES);
         return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
     }
-
 
     private static String randomString(int length) {
         String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -123,11 +129,10 @@ public class EncodeJwt {
         return new String(originalBytes);
     }
 
-    @SuppressWarnings("UseSpecificCatch")
-    public static String createEncryptedToken(String userUuid, String jti, long expirationMillis, RSAPublicKey publicKey) {
+    public String createEncryptedToken(String userUuid, String jti, long expirationMillis) {
         try {
             long now = System.currentTimeMillis();
-            
+
             JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                     .subject(userUuid)
                     .issuer("auth-service")
@@ -137,19 +142,16 @@ public class EncodeJwt {
                     .expirationTime(new Date(now + expirationMillis))
                     .build();
 
-            // สร้าง Header สำหรับ JWE
-            JWEHeader header = new JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM)
-                    .contentType("JWT") // indicate nested JWT
+            JWEHeader header = new JWEHeader.Builder(JWEAlgorithm.DIR, EncryptionMethod.A256GCM)
+                    .contentType("JWT")
                     .build();
 
             EncryptedJWT encryptedJWT = new EncryptedJWT(header, claimsSet);
-
-            // เข้ารหัส
-            RSAEncrypter encrypter = new RSAEncrypter(publicKey);
+            DirectEncrypter encrypter = new DirectEncrypter(jweSecretKey);
             encryptedJWT.encrypt(encrypter);
 
             return encryptedJWT.serialize();
-        } catch (Exception e) {
+        } catch (JOSEException e) {
             throw new RuntimeException("Error generating encrypted refresh token", e);
         }
     }
@@ -165,14 +167,13 @@ public class EncodeJwt {
             }
     }
 
-    @SuppressWarnings("UseSpecificCatch")
-    public static JWTClaimsSet decryptEncryptedToken(String token, RSAPrivateKey privateKey) {
+    public JWTClaimsSet decryptEncryptedToken(String token) {
         try {
             EncryptedJWT encryptedJWT = EncryptedJWT.parse(token);
-            RSADecrypter decrypter = new RSADecrypter(privateKey);
+            DirectDecrypter decrypter = new DirectDecrypter(jweSecretKey);
             encryptedJWT.decrypt(decrypter);
             return encryptedJWT.getJWTClaimsSet();
-        } catch (Exception e) {
+        } catch (JOSEException | ParseException e) {
             throw new RuntimeException("Error decrypting encrypted refresh token", e);
         }
     }

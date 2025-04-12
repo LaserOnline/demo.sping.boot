@@ -1,7 +1,5 @@
 package com.example.demo.sping.boot.service.auth;
 
-import java.security.KeyPair;
-import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 import java.util.Map;
 
@@ -15,14 +13,12 @@ public class AuthService {
 
     private final Config config;
     private final JwtTokenFactory jwtTokenFactory;    
-    private final KeyPair rsaKeyPair;
     private final EncodeJwt encodeJwt;
 
 
-    public AuthService(Config config, JwtTokenFactory jwtTokenFactory,KeyPair rsaKeyPair,EncodeJwt encodeJwt) {
+    public AuthService(Config config, JwtTokenFactory jwtTokenFactory,EncodeJwt encodeJwt) {
         this.config = config;
         this.jwtTokenFactory = jwtTokenFactory;
-        this.rsaKeyPair = rsaKeyPair;
         this.encodeJwt = encodeJwt;
     }
 
@@ -44,7 +40,7 @@ public class AuthService {
         long expiration = config.getRefreshTokenExpireMs();
         long exp = now + expiration;
 
-        String token = EncodeJwt.createEncryptedToken(userId, jti, expiration, (RSAPublicKey) rsaKeyPair.getPublic());
+        String token = encodeJwt.createEncryptedToken(userId, jti, expiration);
 
         return new TokenResult(token, now / 1000, exp / 1000);
     }

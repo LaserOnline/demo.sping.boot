@@ -31,28 +31,5 @@ public class PayloadData implements UserDetails{
     public String getUsername() {
         return usersUuid;
     }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true; // หรือกำหนดตามความเหมาะสม
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true; // หรือกำหนดตามความเหมาะสม
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true; // หรือกำหนดตามความเหมาะสม
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true; // หรือกำหนดตามความเหมาะสม
-    }
     
-    public long getRemainingTime() {
-        return remainingTime;
-    }
 }

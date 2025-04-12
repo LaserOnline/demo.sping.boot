@@ -55,6 +55,10 @@ public class Config {
         return dotenv.get("JWT_SECRET");
     }
 
+    public String getJweSecret() {
+        return dotenv.get("JWE_SECRET");
+    }
+
     public long getAccessTokenExpireMs() {
         return Long.parseLong(dotenv.get("ACCESS_TOKEN_EXPIRE_MS", "0").trim());
     }

@@ -33,15 +33,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenValidator tokenValidator;
     private final HandlerExceptionResolver exceptionResolver;
-    private final RSAPrivateKey rsaPrivateKey;
+    private final EncodeJwt encodeJwt;
 
     public JwtAuthenticationFilter(JwtTokenValidator tokenValidator,
         @Qualifier("handlerExceptionResolver") 
         HandlerExceptionResolver exceptionResolver,
-        RSAPrivateKey rsaPrivateKey) {
+        EncodeJwt encodeJwt
+        ) {
     this.tokenValidator = tokenValidator;
     this.exceptionResolver = exceptionResolver;
-    this.rsaPrivateKey = rsaPrivateKey;
+    this.encodeJwt = encodeJwt;
 }
 
     @Override
@@ -66,8 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (EncodeJwt.isEncryptedToken(token)) {
                 // เป็น refresh
-                JWTClaimsSet joseClaims = EncodeJwt.decryptEncryptedToken(token, rsaPrivateKey);
-                // helper ที่จะแปลง JWTClaimsSet → Claims
+                JWTClaimsSet joseClaims = encodeJwt.decryptEncryptedToken(token);
                 claims = JwtTokenValidator.convertToClaims(joseClaims);
             } else {
                 // ✅ เป็น access token แบบธรรมดา

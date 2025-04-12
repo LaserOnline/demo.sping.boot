@@ -74,6 +74,8 @@ public class SecurityConfig {
                     "/users/register", // สมัครสมาชิก
                     "/users/login",    // ล็อกอิน
                     "/app/**",
+                    "/content/auth/**",
+                    "/databases/**",
                     "/swagger/**",
                     "/api-docs/**",
                     "/v3/api-docs/**",
