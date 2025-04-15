@@ -15,7 +15,7 @@ public class Config {
 
     public Config() {
         this.dotenv = Dotenv.configure()
-                .directory("./")
+                .directory("/app")
                 .ignoreIfMissing()
                 .load();
 

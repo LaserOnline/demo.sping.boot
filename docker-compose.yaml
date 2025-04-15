@@ -11,6 +11,23 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_USERNAME}"
       MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD}"
+  mongo-express:
+    image: mongo-express:1.0.2-20-alpine3.19
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      # MongoDB root credentials
+      ME_CONFIG_MONGODB_ADMINUSERNAME: "${MONGO_USERNAME}"
+      ME_CONFIG_MONGODB_ADMINPASSWORD: "${MONGO_PASSWORD}"
+      ME_CONFIG_MONGODB_SERVER: mongodb
+
+      # Mongo Express Web UI login
+      ME_CONFIG_BASICAUTH_USERNAME: "${MONGO_EXPRESS_USER}"
+      ME_CONFIG_BASICAUTH_PASSWORD: "${MONGO_EXPRESS_PASSWORD}"
+    depends_on:
+      - mongodb
   nginx:
     build:
       context: .
@@ -22,15 +39,15 @@ services:
       - "${NGINX_VOLUMES}:/var/www/data"
       - "${NGINX_VOLUMES}${NGINX_VOLUMES_LOG}:/var/log/nginx"
       - "${NGINX_VOLUMES}${NGINX_VOLUMES_UPLOAD}:/var/www/data/upload"
-  # spring-boot:
-  #   build:
-  #     context: .
-  #     dockerfile: dockerfile.spring.boot
-  #   container_name: spring-boot
-  #   depends_on:
-  #     - mongodb
-  #     - nginx
-  #   ports:
-  #     - "${UAT_SPRING_BOOT_PORT}:${UAT_SPRING_BOOT_PORT}"
-  #   env_file:
-  #     - .env
+  spring-boot:
+    build:
+      context: .
+      dockerfile: dockerfile.spring.boot
+    container_name: spring-boot
+    depends_on:
+      - mongodb
+      - nginx
+    ports:
+      - "${UAT_SPRING_BOOT_PORT}:${UAT_SPRING_BOOT_PORT}"
+    env_file:
+      - .env
