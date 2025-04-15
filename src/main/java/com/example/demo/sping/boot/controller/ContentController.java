@@ -4,16 +4,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.sping.boot.service.auth.PayloadData;
 import com.example.demo.sping.boot.service.content.ContentService;
+import com.example.demo.sping.boot.service.uuid.UuidService;
 import com.example.demo.sping.boot.util.dto.CreateContentDTO;
+import com.example.demo.sping.boot.util.response.ContentResponse;
 import com.example.demo.sping.boot.util.response.Message;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+
 
 
 
@@ -27,21 +34,28 @@ public class ContentController {
     }
     
     @PostMapping("/auth/create")
-    public ResponseEntity<Object> create(@Valid @RequestBody CreateContentDTO dto) {
-    List<String> uploadedFiles = new ArrayList<>();
-        
-    if (dto.getFiles() != null) {
-        for (String base64 : dto.getFiles()) {
-            if (base64 != null && !base64.isEmpty()) {
-                try {
-                    String savedFilename = contentService.uploadFile(base64);
-                    uploadedFiles.add(savedFilename);
-                } catch (IllegalArgumentException e) {
-                    return ResponseEntity.badRequest().body(new Message("ไฟล์ลำดับ " + (uploadedFiles.size() + 1) + ": " + e.getMessage()));
-                }
+    @SecurityRequirement(name = "Bearer Authentication")
+    public ResponseEntity<Object> create(@Valid @RequestBody CreateContentDTO dto, @AuthenticationPrincipal PayloadData payloadData) {
+        List<String> images = new ArrayList<>();
+
+        if (dto.getFiles() != null && !dto.getFiles().isEmpty()) {
+            try {
+                images = contentService.uploadFiles(dto.getFiles());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(new Message(e.getMessage()));
             }
         }
+
+        String uuid = UuidService.generateUuidWithTimestamp();
+        ContentResponse content = new ContentResponse(payloadData.getUsername(),uuid,dto.getName(),dto.getMessage(),images);
+        contentService.createContent(content);
+
+        return ResponseEntity.ok().body(new Message("create successfully"));
     }
-    return ResponseEntity.ok().body(new Message("อัปโหลดสำเร็จทั้งหมด: " + uploadedFiles));
+
+    @GetMapping("/fetch/all")
+    public ResponseEntity<Message> getMethodName() {
+        return ResponseEntity.ok().body(new Message("Testing"));
     }
+    
 }

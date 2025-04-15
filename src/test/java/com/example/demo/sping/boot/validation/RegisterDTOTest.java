@@ -64,7 +64,7 @@ public class RegisterDTOTest {
         assertFalse(response.isEmpty());
 
         boolean usernameFormatEng = response.stream()
-        .anyMatch(v -> v.getPropertyPath().toString().equals("username") && v.getMessage().contains("username must contain only English letters (a-z, A-Z) without numbers or special characters"));
+        .anyMatch(v -> v.getPropertyPath().toString().equals("username") && v.getMessage().contains("username must contain only English letters (a-z, A-Z) and numbers (0-9) without special characters"));
         assertTrue(usernameFormatEng);
     }
 

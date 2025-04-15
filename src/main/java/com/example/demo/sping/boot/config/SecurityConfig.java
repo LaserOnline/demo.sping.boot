@@ -73,8 +73,9 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/users/register", // สมัครสมาชิก
                     "/users/login",    // ล็อกอิน
+                    "/testing/**",
                     "/app/**",
-                    "/content/auth/**",
+                    "/content/fetch/**",
                     "/databases/**",
                     "/swagger/**",
                     "/api-docs/**",
@@ -85,6 +86,7 @@ public class SecurityConfig {
 
                 .requestMatchers("/users/generate/**").authenticated()
                 .requestMatchers("/users/auth/**").authenticated()
+                .requestMatchers("/content/auth/**").authenticated()
                 .anyRequest().authenticated()
             )
 

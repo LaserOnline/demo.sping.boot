@@ -37,6 +37,7 @@ dependencies {
 	implementation("net.coobird:thumbnailator:0.4.20")
 	implementation("org.apache.tika:tika-core:3.1.0")
 	implementation("com.nimbusds:nimbus-jose-jwt:10.1")
+	implementation("com.drewnoakes:metadata-extractor:2.19.0")
 }
 
 tasks.named('test') {
