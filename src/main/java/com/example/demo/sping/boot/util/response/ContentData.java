@@ -9,9 +9,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ContentResponse {
-    private String userUuid;
-    private String contentUuid;
+public class ContentData {
+    private String uuid;
+    private String username;
+    private String profile;
     private String name;
     private String message;
     private List<String> files;

@@ -8,6 +8,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 
@@ -17,11 +19,17 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.sping.boot.config.Config;
 import com.example.demo.sping.boot.service.uuid.UuidService;
+import com.example.demo.sping.boot.util.dto.UpdateContentDTO;
 import com.example.demo.sping.boot.util.entity.ContentEntity;
 import com.example.demo.sping.boot.util.entity.ContentImages;
+import com.example.demo.sping.boot.util.entity.UsersEntity;
+import com.example.demo.sping.boot.util.entity.UsersInfoEntity;
 import com.example.demo.sping.boot.util.repository.ContentImagesRepository;
 import com.example.demo.sping.boot.util.repository.ContentRepository;
-import com.example.demo.sping.boot.util.response.ContentResponse;
+import com.example.demo.sping.boot.util.repository.UserRepository;
+import com.example.demo.sping.boot.util.repository.UsersInfoRepository;
+import com.example.demo.sping.boot.util.response.ContentData;
+import com.example.demo.sping.boot.util.response.CreateContentItem;
 
 import net.coobird.thumbnailator.Thumbnails;
 
@@ -34,9 +42,84 @@ public class ContentService {
     private ContentRepository contentRepository;
     @Autowired
     private ContentImagesRepository contentImagesRepository;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private UsersInfoRepository usersInfoRepository;
 
     public ContentService(Config config) {
         this.config = config;
+    }
+
+    public ContentData getContentDataUuid(String contentUuid) {
+        // ✅ Step 1: ดึง content จาก contentUuid
+        ContentEntity content = contentRepository.findByContentUuid(contentUuid);
+        if (content == null) return null;
+    
+        String userUuid = content.getUsersUuid();
+    
+        // ✅ Step 2: ตรวจสอบว่า userUuid มีอยู่จริง
+        Optional<UsersEntity> userOpt = userRepository.findByUsersUuid(userUuid);
+        Optional<UsersInfoEntity> infoOpt = usersInfoRepository.findByUsersUuid(userUuid);
+    
+        if (userOpt.isEmpty() || infoOpt.isEmpty()) {
+            return null; // ❌ หากไม่พบ user หรือ info จบการทำงาน
+        }
+    
+        // ✅ Step 3: ดึงข้อมูล username และ profile จาก user และ user_info
+        String username = userOpt.get().getUsername();
+        String profile = infoOpt.get().getProfile();
+    
+        // ✅ Step 4: ดึงรายชื่อไฟล์จาก contentUuid
+        List<String> filenames = contentImagesRepository.findByContentUuid(contentUuid).stream()
+            .flatMap(img -> img.getFile().stream())
+            .collect(Collectors.toList());
+    
+        // ✅ Step 5: สร้างและคืนค่า ContentData
+        return new ContentData(
+            content.getContentUuid(),
+            username,
+            profile,
+            content.getName(),
+            content.getMessage(),
+            filenames
+        ); 
+    }
+
+    public List<ContentData> fetchAll() {
+        List<ContentEntity> allContent = contentRepository.findAll();
+        List<ContentData> result = new ArrayList<>();
+
+    for (ContentEntity content : allContent) {
+        String userUuid = content.getUsersUuid();
+
+        // ตรวจสอบว่าผู้ใช้มีอยู่จริง
+        Optional<UsersEntity> userOpt = userRepository.findByUsersUuid(userUuid);
+        Optional<UsersInfoEntity> infoOpt = usersInfoRepository.findByUsersUuid(userUuid);
+
+        if (userOpt.isEmpty() || infoOpt.isEmpty()) continue; // ข้ามถ้า user ไม่พบ
+
+        String username = userOpt.get().getUsername();
+        String profile = infoOpt.get().getProfile();
+
+        List<String> filenames = contentImagesRepository.findByContentUuid(content.getContentUuid()).stream()
+            .flatMap(img -> img.getFile().stream())
+            .collect(Collectors.toList());
+
+        result.add(new ContentData(
+            content.getContentUuid(), 
+            username,
+            profile,
+            content.getName(),
+            content.getMessage(),
+            filenames
+        ));
+    }
+        return result; 
+    }
+
+    public boolean findContentUuid(String uuid) {
+        return contentRepository.findByContentUuid(uuid) != null; 
     }
 
     public List<String> uploadFiles(List<String> base64List) {
@@ -199,7 +282,7 @@ public class ContentService {
 
     // Create Content
 
-    public void createContent (ContentResponse create) {
+    public void createContent (CreateContentItem create) {
         ContentEntity contentEntity = new ContentEntity();
         contentEntity.setContentUuid(create.getContentUuid());
         contentEntity.setUsersUuid(create.getUserUuid());
@@ -215,4 +298,94 @@ public class ContentService {
             contentImagesRepository.save(contentImages);
         }
     }
+
+
+    public void updateContent(UpdateContentDTO dto, String userUuid) {
+        // Step 1: ตรวจสอบว่า Content มีอยู่จริง
+        ContentEntity content = contentRepository.findByContentUuid(dto.getUuid());
+        if (content == null) {
+            throw new IllegalArgumentException("Content not found");
+        }
+    
+        // ✅ Step 1.1: ตรวจสอบว่า userUuid ตรงกับเจ้าของ Content
+        if (!content.getUsersUuid().equals(userUuid)) {
+            throw new IllegalArgumentException("Permission denied: not your content");
+        }
+    
+        // Step 2: ตรวจสอบว่าไฟล์ใหม่ถูกอัปโหลดเข้ามา
+        if (dto.getFiles() != null && !dto.getFiles().isEmpty()) {
+            // ✅ ลบข้อมูล ContentImages เก่าใน MongoDB
+            List<ContentImages> oldImages = contentImagesRepository.findByContentUuid(dto.getUuid());
+            contentImagesRepository.deleteAll(oldImages);
+        
+            // ✅ ลบไฟล์ภาพเก่าออกจากระบบไฟล์
+            for (ContentImages imageGroup : oldImages) {
+                for (String filename : imageGroup.getFile()) {
+                    String path = Paths.get(config.getNginxUploadPath(), filename + ".jpg").toString();
+                    File file = new File(path);
+                    if (file.exists()) {
+                        file.delete(); // ลบไฟล์
+                    }
+                }
+            }
+        
+            // ✅ อัปโหลดไฟล์ใหม่
+            List<String> newFilenames = uploadFiles(dto.getFiles());
+        
+            // ✅ บันทึก ContentImages ใหม่
+            ContentImages newImages = new ContentImages();
+            newImages.setContentUuid(dto.getUuid());
+            newImages.setFile(newFilenames);
+            contentImagesRepository.save(newImages);
+        }
+    
+        // Step 3: อัปเดต name และ message ถ้ามี
+        boolean changed = false;
+    
+        if (dto.getName() != null && !dto.getName().isBlank()) {
+            content.setName(dto.getName());
+            changed = true;
+        }
+    
+        if (dto.getMessage() != null && !dto.getMessage().isBlank()) {
+            content.setMessage(dto.getMessage());
+            changed = true;
+        }
+    
+        if (changed) {
+            contentRepository.save(content);
+        }
+
+    }
+
+    public void deleteContent(String contentUuid, String userUuid) {
+        // Step 1: ตรวจสอบว่า Content มีอยู่
+        ContentEntity content = contentRepository.findByContentUuid(contentUuid);
+        if (content == null) {
+            throw new IllegalArgumentException("Content not found");
+        }
+    
+        // Step 2: ตรวจสอบว่า userUuid ตรงกับเจ้าของ Content
+        if (!content.getUsersUuid().equals(userUuid)) {
+            throw new IllegalArgumentException("Permission denied: not your content");
+        }
+    
+        // Step 3: ลบ ContentEntity
+        contentRepository.delete(content);
+    
+        // Step 4: ลบ ContentImages + ลบไฟล์ภาพจริง
+        List<ContentImages> imageGroups = contentImagesRepository.findByContentUuid(contentUuid);
+        contentImagesRepository.deleteAll(imageGroups);
+    
+        for (ContentImages group : imageGroups) {
+            for (String filename : group.getFile()) {
+                String filePath = Paths.get(config.getNginxUploadPath(), filename + ".jpg").toString();
+                File file = new File(filePath);
+                if (file.exists()) {
+                    file.delete(); // ลบไฟล์ .jpg
+                }
+            }
+        }
+    }
+    
 }

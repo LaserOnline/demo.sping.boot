@@ -75,7 +75,6 @@ public class SecurityConfig {
                     "/users/login",    // ล็อกอิน
                     "/testing/**",
                     "/app/**",
-                    "/content/fetch/**",
                     "/databases/**",
                     "/swagger/**",
                     "/api-docs/**",
@@ -83,7 +82,7 @@ public class SecurityConfig {
                     "/swagger-ui/**",
                     "/swagger-ui.html"
                 ).permitAll()
-
+                .requestMatchers("/content/fetch/**").permitAll()
                 .requestMatchers("/users/generate/**").authenticated()
                 .requestMatchers("/users/auth/**").authenticated()
                 .requestMatchers("/content/auth/**").authenticated()
