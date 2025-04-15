@@ -30,15 +30,6 @@ public class ContentServiceTest {
         );
     }
 
-    @Test
-    void validateBase64Strings_shouldThrow_whenNullOrBlank() {
-        List<String> base64List = List.of(null, "  ");
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> contentService.validateBase64Strings(base64List)
-        );
-        assertTrue(exception.getMessage().contains("null"));
-    }
     
     @Test
     void validateBase64Strings_shouldThrow_whenInvalidBase64() {

@@ -31,10 +31,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 
-
-
-
-
 @RestController
 @RequestMapping("/content")
 @Tag(name = "Content Controller", description = "create get put delete")

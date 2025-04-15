@@ -1,9 +1,5 @@
 package com.example.demo.sping.boot.config;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPrivateKey;
-
 import javax.crypto.SecretKey;
 
 import org.springframework.context.annotation.Bean;
@@ -17,8 +13,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.example.demo.sping.boot.service.auth.JwtAuthenticationFilter;
+import com.mongodb.lang.NonNull;
 
 import io.jsonwebtoken.security.Keys;
 import io.swagger.v3.oas.models.Components;
@@ -34,16 +33,17 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityConfig {
 
     @Bean
-    public KeyPair rsaKeyPair() throws Exception {
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        // ✅ java.security.KeyPair
-        return keyGen.generateKeyPair();
-    }
-
-    @Bean
-    public RSAPrivateKey rsaPrivateKey(KeyPair keyPair) {
-        return (RSAPrivateKey) keyPair.getPrivate();
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(@NonNull CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:3000", "https://localhost.com") 
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("Content-Type","Authorization")
+                        .allowCredentials(true);
+            }
+        };
     }
     
     @Bean
@@ -83,6 +83,7 @@ public class SecurityConfig {
                     "/swagger-ui.html"
                 ).permitAll()
                 .requestMatchers("/content/fetch/**").permitAll()
+                .requestMatchers("/csv/**").permitAll()
                 .requestMatchers("/users/generate/**").authenticated()
                 .requestMatchers("/users/auth/**").authenticated()
                 .requestMatchers("/content/auth/**").authenticated()
